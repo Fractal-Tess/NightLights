@@ -1,9 +1,7 @@
 #include <Arduino.h>
 
-const int IDLE_TURN_OFF = 1800; //  1800 sec = 60s * 30m
-const int BTN_CLICK_DOWNTIME = 1;
-const int RELAY_PIN = 11;
-const int BTN_PIN = 2;
+const int IDLE_TURN_OFF = 1800; //  1800s = 60s per minute * 30 minutes
+const int BTN_CLICK_DOWNTIME = 3;
 
 enum LightState
 {
@@ -26,83 +24,17 @@ void pprint(const Args &...a)
 class LightStrip
 {
 private:
-  unsigned int maxIdleTime = IDLE_TURN_OFF;
+  int lightPin = lightPin;
+  int btnPin = btnPin;
 
-  int lastBtnTriggerTime = 0; //Measure this in MS since last trigger  (seconds)
-  int currentTime = 0;
-  int btnDeltaTime = 0;
+  unsigned long maxIdleTime = 900; // Default value
+  unsigned long currentTime = 0;
+  unsigned long lastBtnTriggerTime = 0;
+  unsigned long btnDeltaTime = 0;
 
-  LightState currentState = OFF;
+  LightState lightState = OFF;
   ButtonState curBtnState = UP;
   ButtonState lastBtnState = UP;
-
-  void HandleTime()
-  {
-    // Set current time
-    currentTime = (int)(millis() / 1000);
-    // Set the time between now and the last click
-    btnDeltaTime = currentTime - lastBtnTriggerTime;
-  }
-
-  void HandleButtonClick()
-  {
-    //Read the button pim
-    int pinValue = digitalRead(BTN_PIN);
-    // If it's high, then we are pressed
-    if (pinValue)
-      curBtnState = DOWN;
-    // Else it's not pressed
-    else
-      curBtnState = UP;
-
-    // If btn is pressed and the last recorded state of the btn was not being pressed, then >
-    // if (curBtnState == DOWN && lastBtnState == UP)
-    if (curBtnState == DOWN && lastBtnState == UP && btnDeltaTime >= BTN_CLICK_DOWNTIME)
-    {
-      lastBtnState = DOWN;
-      lastBtnTriggerTime = currentTime;
-      ButtonPressed();
-    }
-    //If the button is pressed, but the last btn state is down
-    else if (curBtnState == UP && lastBtnState == DOWN)
-      lastBtnState = UP;
-  }
-
-  void ButtonPressed()
-  {
-    switch (currentState)
-    {
-    case ON:
-      SwitchState(OFF);
-      break;
-    case OFF:
-      SwitchState(ON);
-      break;
-    }
-  }
-
-  void HandleIdleActivity()
-  {
-    if (currentState == ON && btnDeltaTime >= maxIdleTime)
-    {
-      SwitchState(OFF);
-    }
-  }
-
-  void SwitchState(LightState state)
-  {
-    if (state == ON)
-    {
-      digitalWrite(RELAY_PIN, HIGH);
-      lastBtnTriggerTime = currentTime;
-      currentState = ON;
-    }
-    else if (state == OFF)
-    {
-      digitalWrite(RELAY_PIN, LOW);
-      currentState = OFF;
-    }
-  }
 
 public:
   void tick()
@@ -111,20 +43,92 @@ public:
     HandleIdleActivity();
     HandleButtonClick();
   }
+
+  LightStrip(int btnPin, int lightPin, int maxIdleTime)
+  {
+    this->maxIdleTime = maxIdleTime;
+    this->lightPin = lightPin;
+    this->btnPin = btnPin;
+    pinMode(btnPin, INPUT);
+    pinMode(lightPin, OUTPUT);
+  }
+
+private:
+  void HandleTime()
+  {
+    // Set current time in seconds
+    currentTime = (int)(millis() / 1000);
+    // Set the time between now and the last click
+    btnDeltaTime = currentTime - lastBtnTriggerTime;
+  }
+
+  void HandleButtonClick()
+  {
+    int pinVal = digitalRead(btnPin);
+    if (pinVal == HIGH)
+      curBtnState = DOWN;
+    else
+      curBtnState = UP;
+
+    // If btn is pressed and the last recorded state of the btn was not pressed
+    if (curBtnState == DOWN && lastBtnState == UP && btnDeltaTime >= BTN_CLICK_DOWNTIME)
+    {
+      lastBtnTriggerTime = currentTime;
+      lastBtnState = DOWN;
+      ButtonPressed();
+    }
+    //If the button is not pressed and the last state is down
+    else if (curBtnState == UP && lastBtnState == DOWN)
+      lastBtnState = UP;
+  }
+
+  void ButtonPressed()
+  {
+    switch (lightState)
+    {
+    case LightState::ON:
+      SwitchLights(LightState::OFF);
+      break;
+    case LightState::OFF:
+      SwitchLights(LightState::ON);
+      break;
+    }
+  }
+
+  void HandleIdleActivity()
+  {
+    if (lightState == LightState::ON && btnDeltaTime >= maxIdleTime)
+    {
+      SwitchLights(LightState::OFF);
+    }
+  }
+
+  void SwitchLights(LightState state)
+  {
+    switch (state)
+    {
+    case LightState::ON:
+      digitalWrite(lightPin, HIGH);
+      lightState = LightState::ON;
+      break;
+    case LightState::OFF:
+      digitalWrite(lightPin, LOW);
+      lightState = LightState::OFF;
+      break;
+    }
+  }
 };
 
-LightStrip ls;
+LightStrip *ls1;
 
 void setup()
 {
-  //11 => Light strip signal
-  pinMode(RELAY_PIN, OUTPUT);
-  //2 => Button input pin
-  pinMode(BTN_PIN, INPUT);
   Serial.begin(9600);
+
+  ls1 = new LightStrip(2, 11, 1800);
 }
 
 void loop()
 {
-  ls.tick();
+  ls1->tick();
 }
