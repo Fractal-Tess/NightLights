@@ -2,8 +2,7 @@
 #include <Arduino.h>
 #include <Enums.hpp>
 #include <constants.hpp>
-#include <Print.hpp>
-
+#include <FPrint.hpp>
 class LightStrip
 {
 
@@ -16,13 +15,13 @@ private:
     //Everything is expressed via miliseconds
 
     // The maximum allowed time in On state
-    uint64_t maxIdleTime;
+    uint32_t maxIdleTime;
     // Current time
-    uint64_t currentTime;
+    uint32_t currentTime;
     // The time of the last click
-    uint64_t lastBtnTriggerTime;
+    uint32_t lastBtnTriggerTime;
     // The time between now and the last click
-    uint64_t btnDeltaTime;
+    uint32_t btnDeltaTime;
 
     //Set initial values
     LightState lightState;
@@ -32,13 +31,13 @@ private:
     ButtonState lastBtnState;
 
 public:
-    void tick();
-    LightStrip(int signalPin, int lightPin, int maxIdleTime);
+    void tick(void);
+    LightStrip(uint8_t signalPin, uint8_t lightPin, uint32_t maxIdleTime);
 
 private:
-    void HandleTime();
-    void HandleButtonClick();
+    void HandleTime(void);
+    void HandleButtonClick(void);
     void SwitchLights(LightState state);
-    void ButtonPressed();
-    void HandleIdleActivity();
+    void ButtonPressed(void);
+    void HandleIdleActivity(void);
 };

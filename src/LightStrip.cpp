@@ -1,6 +1,6 @@
 #include <LightStrip.hpp>
 
-LightStrip::LightStrip(int signalPin, int lightPin, int maxIdleTime)
+LightStrip::LightStrip(uint8_t signalPin, uint8_t lightPin, uint32_t maxIdleTime)
 {
     this->signalPin = signalPin;
     this->lightPin = lightPin;
@@ -62,7 +62,7 @@ void LightStrip::ButtonPressed()
 
 void LightStrip::HandleIdleActivity()
 {
-    if (lightState == LightState::ON && btnDeltaTime >= maxIdleTime)
+    if (lightState == LightState::ON && btnDeltaTime > maxIdleTime)
     {
         SwitchLights(LightState::OFF);
     }
